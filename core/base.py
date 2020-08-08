@@ -78,7 +78,7 @@ class Crud:
         if page > last_page:
             raise HTTPException(404, detail='Page not found')
         query = query.offset(
-            self.PAGE_LIMIT * (page-1)
+            limit * (page-1)
         ).limit(
             limit
         )
