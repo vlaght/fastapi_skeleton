@@ -77,6 +77,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
             raise HTTPException(422, detail='Provide some data')
         item = crud.get_item_by_id(db, item_id)
         updated_item = crud.update(db, item, values.dict())
+        db.commit()
         return updated_item
 
     @app.delete(item_url, tags=[name], operation_id='{}_delete',)
