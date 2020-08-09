@@ -18,9 +18,6 @@ class Item(BaseModel):
     created_dt: datetime.datetime
     updated_dt: datetime.datetime
 
-    class Config:
-        orm_mode = True
-
 
 class ItemUpdate(BaseModel):
     name: str
@@ -33,9 +30,6 @@ class ItemReadPage(BaseModel):
     name: str
     price: float
     is_offer: bool
-
-    class Config:
-        orm_mode = True
 
 
 class Dispatcher:
