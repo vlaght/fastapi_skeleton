@@ -5,7 +5,7 @@ metadata = sqlalchemy.MetaData()
 
 # DATABASE_URL = "sqlite:///./sql_app.db"
 
-DATABASE_URL = "postgresql://root@localhost:5432/db"
+DATABASE_URL = "postgresql://root@127.0.0.1:5432/db"
 database = databases.Database(DATABASE_URL)
 
 
