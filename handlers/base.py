@@ -8,14 +8,6 @@ from models.database import get_db_engine
 from schemas.base import get_page_schema
 
 
-def get_db():
-    engine = get_db_engine()
-    try:
-        yield engine
-    finally:
-        pass
-
-
 def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     stream_url = '/{}'.format(name)
     item_url = stream_url + '/{item_id}'
@@ -29,7 +21,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         operation_id='{}_read_page',
     )
     async def read_page(
-        db=Depends(get_db),
+        db=Depends(get_db_engine),
         page: Optional[int] = Query(1, ge=1),
         limit: Optional[int] = Query(crud.PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     ):
@@ -42,7 +34,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         tags=[name],
         operation_id='{}_read',
     )
-    async def read(item_id: int = ObjId, db=Depends(get_db)):
+    async def read(item_id: int = ObjId, db=Depends(get_db_engine)):
         item = crud.read(db, item_id)
         return item
 
@@ -54,7 +46,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     )
     async def create(
         values: schema_dispatcher.create,
-        db=Depends(get_db)
+        db=Depends(get_db_engine)
     ):
         item = crud.create(db, values.dict())
         return item
@@ -68,7 +60,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     async def update(
         item_id: int = ObjId,
         values: schema_dispatcher.update = None,
-        db=Depends(get_db)
+        db=Depends(get_db_engine)
     ):
         if values is None:
             raise HTTPException(422, detail='Provide some data')
@@ -77,6 +69,6 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         return updated_item
 
     @app.delete(item_url, tags=[name], operation_id='{}_delete',)
-    async def delete(item_id: int = ObjId, db=Depends(get_db)):
+    async def delete(item_id: int = ObjId, db=Depends(get_db_engine)):
         crud.delete(db, item_id)
         return {}
