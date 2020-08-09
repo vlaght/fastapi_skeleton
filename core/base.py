@@ -27,6 +27,7 @@ class Crud:
     def create(self, db: Session, values: dict):
         obj = self.model(**values)
         db.add(obj)
+        db.flush()
         return obj
 
     def read(self, db: Session, item_id: int):
@@ -37,6 +38,7 @@ class Crud:
         for prop, value in values.items():
             setattr(obj, prop, value)
         obj.updated_dt = datetime.datetime.now()
+        db.flush()
         return obj
 
     def delete(self, db: Session, obj):
