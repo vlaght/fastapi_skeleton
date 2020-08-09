@@ -10,7 +10,10 @@ database = databases.Database(DATABASE_URL)
 
 
 def get_db_engine():
-    return sqlalchemy.create_engine(DATABASE_URL)
+    return sqlalchemy.create_engine(
+        DATABASE_URL,
+        poolclass=sqlalchemy.pool.NullPool,
+    )
 
 
 engine = get_db_engine()
