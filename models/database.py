@@ -1,37 +1,18 @@
-import datetime
-from sqlalchemy import Boolean
-from sqlalchemy import Column
-from sqlalchemy import DateTime
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import databases
+import sqlalchemy
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./sql_app.db"
-# SQLALCHEMY_DATABASE_URL = "postgresql://user:password@postgresserver/db"
+metadata = sqlalchemy.MetaData()
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# DATABASE_URL = "sqlite:///./sql_app.db"
 
-BaseModel = declarative_base()
+DATABASE_URL = "postgresql://root@localhost:5432/db"
+database = databases.Database(DATABASE_URL)
 
 
-class Base(BaseModel):
-    __tablename__ = None
-    __abstract__ = True
+def get_db_engine():
+    return sqlalchemy.create_engine(DATABASE_URL)
 
-    deleted = Column(Boolean, default=False, nullable=False)
-    created_dt = Column(
-        DateTime,
-        default=datetime.datetime.now,
-        nullable=False,
-    )
-    updated_dt = Column(
-        DateTime,
-        default=datetime.datetime.now,
-        nullable=False,
-    )
 
-    def delete(self):
-        self.deleted = True
+engine = get_db_engine()
+
+metadata.create_all(engine)

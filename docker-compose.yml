@@ -1,0 +1,14 @@
+version: "2"
+
+services:
+  db:
+    image: postgres:10
+    environment:
+      - POSTGRES_USER=root
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    volumes:
+      - ./init/create_databases.sql:/docker-entrypoint-initdb.d/init.sql
+      - ~/docker/postgres/fastapi_skeleton:/var/lib/postgresql/data
+    restart: always
+    ports:
+      - 5432:5432

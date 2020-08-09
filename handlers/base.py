@@ -1,20 +1,19 @@
 from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Query
-from sqlalchemy.orm import Session
 from typing import Optional
 
 from core.base import Crud
-from models.database import SessionLocal
+from models.database import get_db_engine
 from schemas.base import get_page_schema
 
 
 def get_db():
-    db = SessionLocal()
+    engine = get_db_engine()
     try:
-        yield db
+        yield engine
     finally:
-        db.close()
+        pass
 
 
 def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
@@ -30,7 +29,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         operation_id='{}_read_page',
     )
     async def read_page(
-        db: Session = Depends(get_db),
+        db=Depends(get_db),
         page: Optional[int] = Query(1, ge=1),
         limit: Optional[int] = Query(crud.PAGE_LIMIT, ge=1, le=MAX_PAGE_LIMIT),
     ):
@@ -43,9 +42,8 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         tags=[name],
         operation_id='{}_read',
     )
-    async def read(item_id: int = ObjId, db: Session = Depends(get_db)):
+    async def read(item_id: int = ObjId, db=Depends(get_db)):
         item = crud.read(db, item_id)
-        db.commit()
         return item
 
     @app.post(
@@ -56,10 +54,9 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     )
     async def create(
         values: schema_dispatcher.create,
-        db: Session = Depends(get_db)
+        db=Depends(get_db)
     ):
         item = crud.create(db, values.dict())
-        db.commit()
         return item
 
     @app.put(
@@ -71,18 +68,15 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     async def update(
         item_id: int = ObjId,
         values: schema_dispatcher.update = None,
-        db: Session = Depends(get_db)
+        db=Depends(get_db)
     ):
         if values is None:
             raise HTTPException(422, detail='Provide some data')
         item = crud.get_item_by_id(db, item_id)
         updated_item = crud.update(db, item, values.dict())
-        db.commit()
         return updated_item
 
     @app.delete(item_url, tags=[name], operation_id='{}_delete',)
-    async def delete(item_id: int = ObjId, db: Session = Depends(get_db)):
-        item = crud.get_item_by_id(db, item_id)
-        crud.delete(db, item)
-        db.commit()
+    async def delete(item_id: int = ObjId, db=Depends(get_db)):
+        crud.delete(db, item_id)
         return {}

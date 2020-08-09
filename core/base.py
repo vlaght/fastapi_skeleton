@@ -1,7 +1,66 @@
 import datetime
 import math
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy import Table
+from sqlalchemy import and_
+from sqlalchemy import func
+from typing import List
+from typing import Optional
+
+
+class ObjectNotFound(HTTPException):
+
+    def __init__(self, table: Table, item_id: int):
+        super().__init__(
+            404,
+            detail='{}<id:{}> Not found'.format(
+                table,
+                item_id,
+            )
+        )
+
+
+def execute_statement(
+    db,
+    statement,
+    fetchmany: Optional[bool] = False,
+    size: Optional[int] = None
+):
+    with db.connect() as connection:
+        result_proxy = connection.execute(statement)
+        if fetchmany:
+            result = result_proxy.fetchmany(size)
+        else:
+            result = result_proxy.fetchone()
+    return result
+
+
+def execute_insert_statement(
+    db,
+    statement,
+    values
+):
+    with db.connect() as connection:
+        result_proxy = connection.execute(statement, values)
+        result = result_proxy.fetchone()
+    return result
+
+
+def get_count(db, statement):
+    count_q = statement.with_only_columns([func.count()]).order_by(None)
+    with db.connect() as connection:
+        count = connection.execute(count_q).scalar()
+    return count
+
+
+def check_existence(db, table, item_id: int):
+    statement = table.select().where(
+        and_(
+            table.c.id == item_id,
+            ~table.c.deleted,
+        )
+    )
+    return get_count(db, statement) != 0
 
 
 class Crud:
@@ -9,46 +68,97 @@ class Crud:
     default_order_field = 'id'
     default_order_direction = 'desc'
 
-    def __init__(self, model):
-        self.model = model
+    def __init__(self, table):
+        self.table = table
 
-    def get_item_by_id(self, db: Session, item_id: int):
-        item = db.query(self.model).get(item_id)
-        if item.deleted:
-            raise HTTPException(
-                404,
-                detail='{}<id:{}> Not found'.format(
-                    self.model.__tablename__,
-                    item_id,
-                )
+    def get_item_by_id(self, db, item_id: int):
+        if not check_existence(db, self.table, item_id):
+            raise ObjectNotFound(self.table, item_id)
+        statement = self.table.select().where(
+            and_(
+                self.table.c.id == item_id,
+                ~self.table.c.deleted,
             )
+        )
+        item = execute_statement(db, statement)
         return item
 
-    def create(self, db: Session, values: dict):
-        obj = self.model(**values)
-        db.add(obj)
-        db.flush()
-        return obj
+    def create(self, db, values: dict):
+        statement = self.table.insert().returning(self.table)
+        item = execute_insert_statement(db, statement, values)
+        return item
 
-    def read(self, db: Session, item_id: int):
-        obj = self.get_item_by_id(db, item_id)
-        return obj
+    def read(self, db, item_id: int):
+        item = self.get_item_by_id(db, item_id)
+        return item
 
-    def update(self, db: Session, obj, values: dict):
-        for prop, value in values.items():
-            setattr(obj, prop, value)
-        obj.updated_dt = datetime.datetime.now()
-        db.flush()
-        return obj
+    def update(self, db, item_id, values: dict):
+        statement = self.table.update().where(
+            self.table.c.id == item_id
+        ).values(
+            dict(
+                values,
+                updated_dt=datetime.datetime.now()
+            )
+        ).returning(
+            self.table
+        )
+        item = execute_statement(db, statement)
+        return item
 
-    def delete(self, db: Session, obj):
-        obj.updated_dt = datetime.datetime.now()
-        obj.delete()
-        db.flush()
+    def delete(self, db, item_id: int):
+        if not check_existence(db, self.table, item_id):
+            raise ObjectNotFound(self.table, item_id)
+
+        statement = self.table.update().where(
+            self.table.c.id == item_id
+        ).returning(
+            self.table
+        )
+        values = dict(
+            deleted=True,
+            updated_dt=datetime.datetime.now(),
+        )
+        execute_insert_statement(db, statement, values)
+
+    def add_filters(self, statement, filters=None):
+        _filters = [
+            ~self.table.c.deleted,
+        ]
+        if filters:
+            _filters.extend(filters)
+
+        return statement.where(
+            and_(*_filters)
+        )
+
+    def add_orderings(self, statement, orderings: Optional[List] = None):
+        default_order_field = getattr(self.table.c, self.default_order_field)
+        default_order_field_with_direction = getattr(
+            default_order_field,
+            self.default_order_direction,
+        )
+
+        if not orderings:
+            _orderings = [
+                default_order_field_with_direction()
+            ]
+        elif orderings:
+            _orderings = orderings
+
+        return statement.order_by(
+            *_orderings
+        )
+
+    def _construct_read_page_statement(self, filters, orderings):
+        statement = self.table.select()
+        statement = self.add_filters(statement, filters)
+        statement = self.add_orderings(statement, orderings)
+        return statement
 
     def read_page(
         self,
-        db: Session,
+        db,
         page=1,
         filters=None,
         orderings=None,
@@ -56,35 +166,25 @@ class Crud:
     ):
         if page < 1:
             page = 1
-        query = db.query(self.model)
-        if orderings:
-            query = query.order_by(*orderings)
-        default_order_field = getattr(self.model, self.default_order_field)
-        default_order_filter = getattr(
-            default_order_field,
-            self.default_order_direction,
-        )
-        query = query.order_by(
-            default_order_filter()
-        )
-        if filters:
-            query = query.filter(
-                *filters
-            )
 
-        query = query.filter(
-            self.model.deleted == False  # noqa: E712
-        )
-        total = query.count()
-        last_page = math.ceil(total/limit)
+        statement = self._construct_read_page_statement(filters, orderings)
+        total = get_count(db, statement)
+        last_page = max(1, math.ceil(total/limit))
+
         if page > last_page:
             raise HTTPException(404, detail='Page not found')
-        query = query.offset(
+
+        statement = statement.offset(
             limit * (page-1)
         ).limit(
             limit
         )
-        items = query.all()
+        items = execute_statement(
+            db,
+            statement,
+            fetchmany=True,
+            size=limit,
+        )
         return dict(
             page=page,
             last_page=last_page,
