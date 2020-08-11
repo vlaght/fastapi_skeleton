@@ -22,7 +22,7 @@ class Item(BaseModel):
 class ItemUpdate(BaseModel):
     name: str
     price: float
-    is_offer: Optional[bool] = False
+    is_offer: Optional[bool]
 
 
 class ItemReadPage(BaseModel):

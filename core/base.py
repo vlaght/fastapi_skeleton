@@ -7,6 +7,8 @@ from sqlalchemy import func
 from typing import List
 from typing import Optional
 
+from models.database import database
+
 
 class ObjectNotFound(HTTPException):
 
@@ -20,47 +22,20 @@ class ObjectNotFound(HTTPException):
         )
 
 
-def execute_statement(
-    db,
-    statement,
-    fetchmany: Optional[bool] = False,
-    size: Optional[int] = None
-):
-    with db.connect() as connection:
-        result_proxy = connection.execute(statement)
-        if fetchmany:
-            result = result_proxy.fetchmany(size)
-        else:
-            result = result_proxy.fetchone()
-    return result
-
-
-def execute_insert_statement(
-    db,
-    statement,
-    values
-):
-    with db.connect() as connection:
-        result_proxy = connection.execute(statement, values)
-        result = result_proxy.fetchone()
-    return result
-
-
-def get_count(db, statement):
+async def get_count(statement):
     count_q = statement.with_only_columns([func.count()]).order_by(None)
-    with db.connect() as connection:
-        count = connection.execute(count_q).scalar()
-    return count
+    return await database.fetch_val(query=count_q)
 
 
-def check_existence(db, table, item_id: int):
+async def check_existence(table, item_id: int):
     statement = table.select().where(
         and_(
             table.c.id == item_id,
             ~table.c.deleted,
         )
     )
-    return get_count(db, statement) != 0
+    count = await get_count(statement)
+    return count != 0
 
 
 class Crud:
@@ -71,8 +46,8 @@ class Crud:
     def __init__(self, table):
         self.table = table
 
-    def get_item_by_id(self, db, item_id: int):
-        if not check_existence(db, self.table, item_id):
+    async def get_item_by_id(self, item_id: int):
+        if not await check_existence(self.table, item_id):
             raise ObjectNotFound(self.table, item_id)
         statement = self.table.select().where(
             and_(
@@ -80,34 +55,32 @@ class Crud:
                 ~self.table.c.deleted,
             )
         )
-        item = execute_statement(db, statement)
-        return item
+        return await database.fetch_one(statement)
 
-    def create(self, db, values: dict):
+    async def create(self, values: dict):
         statement = self.table.insert().returning(self.table)
-        item = execute_insert_statement(db, statement, values)
-        return item
+        return await database.fetch_one(statement, values)
 
-    def read(self, db, item_id: int):
-        item = self.get_item_by_id(db, item_id)
-        return item
+    async def read(self, item_id: int):
+        return await self.get_item_by_id(item_id)
 
-    def update(self, db, item_id, values: dict):
+    async def update(self, item_id, values: dict):
+        await check_existence(self.table, item_id)
+        values['updated_dt'] = datetime.datetime.now()
         statement = self.table.update().where(
             self.table.c.id == item_id
         ).values(
-            dict(
-                values,
-                updated_dt=datetime.datetime.now()
-            )
+            **values
         ).returning(
             self.table
         )
-        item = execute_statement(db, statement)
-        return item
+        return await database.fetch_one(
+            statement,
+            values,
+        )
 
-    def delete(self, db, item_id: int):
-        if not check_existence(db, self.table, item_id):
+    async def delete(self, item_id: int):
+        if not await check_existence(self.table, item_id):
             raise ObjectNotFound(self.table, item_id)
 
         statement = self.table.update().where(
@@ -119,7 +92,7 @@ class Crud:
             deleted=True,
             updated_dt=datetime.datetime.now(),
         )
-        execute_insert_statement(db, statement, values)
+        await database.execute(statement, values)
 
     def add_filters(self, statement, filters=None):
         _filters = [
@@ -156,9 +129,9 @@ class Crud:
         statement = self.add_orderings(statement, orderings)
         return statement
 
-    def read_page(
+    async def read_page(
         self,
-        db,
+
         page=1,
         filters=None,
         orderings=None,
@@ -168,7 +141,7 @@ class Crud:
             page = 1
 
         statement = self._construct_read_page_statement(filters, orderings)
-        total = get_count(db, statement)
+        total = await get_count(statement)
         last_page = max(1, math.ceil(total/limit))
 
         if page > last_page:
@@ -179,12 +152,8 @@ class Crud:
         ).limit(
             limit
         )
-        items = execute_statement(
-            db,
-            statement,
-            fetchmany=True,
-            size=limit,
-        )
+        items = await database.fetch_all(statement)
+
         return dict(
             page=page,
             last_page=last_page,
