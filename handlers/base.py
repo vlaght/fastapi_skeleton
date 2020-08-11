@@ -16,7 +16,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         stream_url,
         response_model=get_page_schema(schema_dispatcher.read_page),
         tags=[name],
-        operation_id='{}_read_page',
+        operation_id='{}_read_page'.format(name),
     )
     async def read_page(
         page: Optional[int] = Query(1, ge=1),
@@ -28,7 +28,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         item_url,
         response_model=schema_dispatcher.read,
         tags=[name],
-        operation_id='{}_read',
+        operation_id='{}_read'.format(name),
     )
     async def read(item_id: int = ObjId):
         return await crud.read(item_id)
@@ -37,7 +37,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         stream_url,
         response_model=schema_dispatcher.read,
         tags=[name],
-        operation_id='{}_create',
+        operation_id='{}_create'.format(name),
     )
     async def create(
         values: schema_dispatcher.create,
@@ -48,7 +48,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
         item_url,
         response_model=schema_dispatcher.read,
         tags=[name],
-        operation_id='{}_update',
+        operation_id='{}_update'.format(name),
     )
     async def update(
         item_id: int = ObjId,
@@ -58,7 +58,7 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
             raise HTTPException(422, detail='Provide some data')
         return await crud.update(item_id, values.dict())
 
-    @app.delete(item_url, tags=[name], operation_id='{}_delete',)
+    @app.delete(item_url, tags=[name], operation_id='{}_delete'.format(name))
     async def delete(item_id: int = ObjId):
         await crud.delete(item_id)
         return {}
