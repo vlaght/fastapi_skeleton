@@ -1,7 +1,8 @@
 import datetime
+from typing import Optional
+
 from pydantic import BaseModel
 from pydantic import Field
-from typing import Optional
 
 
 class ItemCreate(BaseModel):

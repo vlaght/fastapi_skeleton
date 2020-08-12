@@ -1,11 +1,12 @@
 import datetime
 import math
+from typing import List
+from typing import Optional
+
 from fastapi import HTTPException
 from sqlalchemy import Table
 from sqlalchemy import and_
 from sqlalchemy import func
-from typing import List
-from typing import Optional
 
 from models.database import database
 

@@ -11,7 +11,7 @@ repos:
     rev: "master"
     hooks:
       - id: isort
-        args: ["-sl", "-b", "rest models core", "-sg", manage.py"]
+        args: ["--force-single-line-imports"]
   - repo: https://github.com/pre-commit/mirrors-autopep8
     rev: v1.5.4 # Use the sha / tag you want to point at
     hooks:

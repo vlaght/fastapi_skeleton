@@ -1,7 +1,8 @@
+from typing import Optional
+
 from fastapi import HTTPException
 from fastapi import Path
 from fastapi import Query
-from typing import Optional
 
 from core.base import Crud
 from schemas.base import get_page_schema

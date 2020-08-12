@@ -1,13 +1,16 @@
-import databases
 import os
+
+import databases
 import sqlalchemy
+
+from cfg import DATABASE_URLS
 
 metadata = sqlalchemy.MetaData()
 
-DATABASE_URLS = {
-    'main': "postgresql://root@127.0.0.1:5432/db",
-    'test': "postgresql://root@127.0.0.1:5432/db_test",
-}
+# DATABASE_URLS = {
+#     'main': "postgresql://postgres@localhost:5432/db",
+#     'test': "postgresql://postgres@localhost:5432/db_test",
+# }
 
 
 def get_db(target: str = 'main'):
