@@ -158,7 +158,6 @@ class Crud:
             page=page,
             last_page=last_page,
             limit=limit,
-            count=len(items),
             total=total,
             items=items,
         )

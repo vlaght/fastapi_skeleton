@@ -1,4 +1,5 @@
 from fastapi import HTTPException
+from fastapi import Path
 from fastapi import Query
 from typing import Optional
 
@@ -10,7 +11,11 @@ def bind_crud_handlers(app, name, schema_dispatcher, crud: Crud):
     stream_url = '/{}'.format(name)
     item_url = stream_url + '/{item_id}'
     MAX_PAGE_LIMIT = 100
-    ObjId = Query(None, ge=1)
+    ObjId = Path(
+        None,
+        description='identifier of object',
+        ge=1
+    )
 
     @app.get(
         stream_url,

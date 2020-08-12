@@ -5,9 +5,9 @@ from typing import Optional
 
 
 class ItemCreate(BaseModel):
-    name: str
-    price: float
-    is_offer: bool = Field(False)
+    name: str = Field(None, description='Name of item')
+    price: float = Field(None, description='Item`s price')
+    is_offer: bool = Field(False, description='Offer flag')
 
 
 class Item(BaseModel):

@@ -18,3 +18,9 @@ pipenv sync
 docker-compose up -d db
 uvicorn main:app --reload
 ```
+
+### For testing:
+Set TESTING flag for using test DB instead of main DB
+```sh
+TESTING=1 pytest
+```
