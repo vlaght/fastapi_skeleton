@@ -1,4 +1,4 @@
-# FastAPI application skeleton
+# FastAPI application skeleton [![Build Status](https://travis-ci.com/vlaght/fastapi_skeleton.svg?branch=master)](https://travis-ci.com/vlaght/fastapi_skeleton)
 Structured in MVC-like style
 
 ### Some of basic requirements
