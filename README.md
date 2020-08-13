@@ -13,8 +13,7 @@ Structured in MVC-like style
 
 ### Basic, for launch:
 ```sh
-pipenv install
-pipenv sync
+pip install -r requirements.txt
 docker-compose up -d db
 uvicorn main:app --reload
 ```
